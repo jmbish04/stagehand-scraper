@@ -14,7 +14,7 @@
     },
   "d1_databases": [
     {
-      "binding": "stagehand_demo",
+      "binding": "DB",
       "database_name": "stagehand-demo",
       "database_id": "be607bff-8260-4660-b1da-16bacd23d6c6"
     }
