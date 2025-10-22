@@ -12,6 +12,13 @@
     "ai": {
       "binding": "AI"
     },
+  "d1_databases": [
+    {
+      "binding": "stagehand_demo",
+      "database_name": "stagehand-demo",
+      "database_id": "be607bff-8260-4660-b1da-16bacd23d6c6"
+    }
+  ],
     "alias": {
       "playwright": "@cloudflare/playwright"
     }
