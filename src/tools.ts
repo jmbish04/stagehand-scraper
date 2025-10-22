@@ -73,9 +73,9 @@ export class EmbeddingTool {
 
     public async generateEmbedding(query: string): Promise<number[]> {
         try {
-            const queryVector: EmbeddingResponse = await this.env.AI.run(EmbedModel, {
+            const queryVector = await this.env.AI.run(EmbedModel, {
                 text: [query],
-            });
+            }) as any;
             if (!queryVector?.data?.[0]) {
                 throw new Error(`Failed to generate embedding for query: ${query.substring(0, 100)}...`);
             }
@@ -87,7 +87,7 @@ export class EmbeddingTool {
 
     public async generateBatchEmbeddings(queries: string[]): Promise<number[][]> {
         try {
-            const batchResponse: EmbeddingResponse = await this.env.AI.run(EmbedModel, { text: queries });
+            const batchResponse = await this.env.AI.run(EmbedModel, { text: queries }) as any;
             if (!batchResponse?.data || batchResponse.data.length !== queries.length) {
                 throw new Error(`Batch embedding generation failed. Expected ${queries.length} embeddings, got ${batchResponse?.data?.length || 0}`);
             }
@@ -107,7 +107,7 @@ export class EmbeddingTool {
                 matches.map(async (match, index) => {
                     try {
                         const context = match.metadata?.[contextField] || match[contextField] || "";
-                        const response = await this.env.AI.run(RerankerModel, { context, query });
+                        const response = await this.env.AI.run(RerankerModel, { contexts: [context], query }) as any;
                         return { ...match, score: response.score || 0, originalIndex: index };
                     } catch (error) {
                          console.error(`Reranking failed for match index ${index}:`, error); // Log specific error
@@ -141,11 +141,11 @@ export class StructuredResponseTool {
         for (const key in properties) {
             if (!(key in fullResponse) || fullResponse[key] === undefined) {
                 const zodType = properties[key];
-                if (zodType._def?.typeName === "ZodArray") fullResponse[key] = [];
-                else if (zodType._def?.typeName === "ZodObject") fullResponse[key] = {};
-                else if (zodType._def?.typeName === "ZodString") fullResponse[key] = "";
-                else if (zodType._def?.typeName === "ZodNumber") fullResponse[key] = 0;
-                else if (zodType._def?.typeName === "ZodBoolean") fullResponse[key] = false;
+                if ((zodType._def as any)?.typeName === "ZodArray") fullResponse[key] = [];
+                else if ((zodType._def as any)?.typeName === "ZodObject") fullResponse[key] = {};
+                else if ((zodType._def as any)?.typeName === "ZodString") fullResponse[key] = "";
+                else if ((zodType._def as any)?.typeName === "ZodNumber") fullResponse[key] = 0;
+                else if ((zodType._def as any)?.typeName === "ZodBoolean") fullResponse[key] = false;
                 else fullResponse[key] = null;
             }
         }
@@ -171,7 +171,7 @@ export class StructuredResponseTool {
                 response_format: { type: "json_schema", json_schema: jsonSchema },
             });
 
-            const resultObject = response?.response || response;
+            const resultObject = (response as any)?.response || response;
             if (typeof resultObject !== 'object' || resultObject === null) {
                  throw new Error(`Model ${modelName} returned non-object response: ${JSON.stringify(resultObject)}`);
             }

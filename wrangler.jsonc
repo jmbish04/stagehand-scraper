@@ -9,17 +9,22 @@
     "browser": {
       "binding": "BROWSER"
     },
-    "ai": {
-      "binding": "AI"
-    },
+  "ai": {
+    "binding": "AI"
+  },
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "public"
+  },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "stagehand-demo",
-      "database_id": "be607bff-8260-4660-b1da-16bacd23d6c6"
+      "database_id": "be607bff-8260-4660-b1da-16bacd23d6c6",
+      "migrations_dir": "migrations"
     }
   ],
-    "alias": {
-      "playwright": "@cloudflare/playwright"
-    }
+  "alias": {
+    "playwright": "@cloudflare/playwright"
   }
+}

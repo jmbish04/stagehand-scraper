@@ -8,6 +8,7 @@ declare namespace Cloudflare {
 	interface Env {
 		BROWSER: Fetcher;
 		AI: Ai;
+		DB: D1Database;
 	}
 }
 interface Env extends Cloudflare.Env {}
