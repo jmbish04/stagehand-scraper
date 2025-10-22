@@ -33,12 +33,13 @@ const schemaDescriptionSchema = z.array(fieldDescriptionSchema)
  */
 function buildSchemaFromDescription(
   description: z.infer<typeof schemaDescriptionSchema>
-): z.ZodTypeAny {
+): z.ZodArray<z.ZodObject<any>> { // Explicitly type the return
   if (!Array.isArray(description) || description.length === 0) {
     // Fallback to a generic schema if description is invalid or empty
-    console.warn("Invalid or empty schema description received, falling back to generic schema.");
-    return z.array(z.record(z.string(), z.unknown()))
-      .describe("Generic fallback: An array of objects with unknown string keys/values.");
+    console.warn("Invalid or empty schema description received, falling back to generic array of objects schema.");
+    // *** UPDATED FALLBACK HERE ***
+    return z.array(z.object({})) // Return array of empty objects
+      .describe("Generic fallback: An array of objects with undefined structure.");
   }
 
   const objectShape: Record<string, z.ZodTypeAny> = {};
@@ -57,7 +58,6 @@ function buildSchemaFromDescription(
         break;
       case "array":
         // Basic array, assuming array of unknowns for simplicity.
-        // Could be enhanced to ask AI for array item type.
         fieldSchema = z.array(z.unknown());
         break;
       case "object":
@@ -76,8 +76,11 @@ function buildSchemaFromDescription(
     objectShape[field.name] = fieldSchema.optional();
   });
 
-  // Assume the desired output is an array of these objects
-  return z.array(z.object(objectShape)).describe("Dynamically generated schema: An array of objects.");
+  // Ensure we return the correct type
+  const finalSchema = z.array(z.object(objectShape))
+        .describe("Dynamically generated schema: An array of objects.");
+
+  return finalSchema;
 }
 
 
