@@ -99,6 +99,7 @@ interface LogDetails {
   selector?: string;
   error_stack?: string;
   details?: string;
+  modelUsed?: string;
 }
 
 // --- WebSocket Broadcasting ---
@@ -146,6 +147,20 @@ function addWebSocketConnection(server: WebSocket, requestId?: string) {
   });
 }
 
+// Helper function to convert UTC to PST
+function toPSTString(date: Date): string {
+  return date.toLocaleString('en-US', { 
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace(/(\d+)\/(\d+)\/(\d+),?\s+(\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6');
+}
+
 async function logToD1(db: D1Database | undefined, level: LogLevel, logData: LogDetails) {
   if (!db) {
     console.error(`[${level}] (DB unavailable) ${logData.message}`, logData.details || logData.error_stack || '');
@@ -164,11 +179,12 @@ async function logToD1(db: D1Database | undefined, level: LogLevel, logData: Log
   }
   try {
     const stmt = db.prepare(
-      `INSERT INTO scraper_logs (request_id, level, message, url, prompt, selector, error_stack, details)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO scraper_logs (timestamp, request_id, level, message, url, prompt, selector, error_stack, details, model_used)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     await stmt
       .bind(
+        toPSTString(new Date()), // PST timestamp
         logData.request_id ?? null,
         level,
         logData.message,
@@ -177,6 +193,7 @@ async function logToD1(db: D1Database | undefined, level: LogLevel, logData: Log
         logData.selector ?? null,
         logData.error_stack ?? null,
         logData.details ?? null,
+        logData.modelUsed ?? null,
       )
       .run();
   } catch (dbError: any) {
@@ -188,7 +205,7 @@ async function logToD1(db: D1Database | undefined, level: LogLevel, logData: Log
 async function fetchRecentLogs(db: D1Database | undefined, limit = 100, requestId?: string) {
   if (!db) return [] as any[];
   try {
-    const base = `SELECT id, timestamp, request_id, level, message, url, prompt, selector, error_stack, details FROM scraper_logs`;
+    const base = `SELECT id, timestamp, request_id, level, message, url, prompt, selector, error_stack, details, model_used FROM scraper_logs`;
     const where = requestId ? ` WHERE request_id = ?` : '';
     const sql = `${base}${where} ORDER BY id DESC LIMIT ?`;
     const stmt = db.prepare(sql);
@@ -226,7 +243,7 @@ export default {
       broadcastToConnections(requestId, {
         type: 'log',
         data: {
-          timestamp: new Date().toISOString(),
+          timestamp: toPSTString(new Date()),
           level,
           ...logData
         }
@@ -241,7 +258,7 @@ export default {
         status,
         result,
         error,
-        timestamp: new Date().toISOString()
+        timestamp: toPSTString(new Date())
       });
     };
 

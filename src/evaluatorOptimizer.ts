@@ -332,14 +332,20 @@ async function executeToolCall(toolCall: any, page: any, env: Env, log: LogFn, u
 Visual Description: ${args.visual_description}
 Extracted Content: ${args.extracted_content || 'None'}
 
-Provide detailed analysis and recommendations.`;
+Please provide detailed analysis and specific actionable recommendations. Focus on:
+1. Whether the goal has been achieved and why
+2. What specific action should be taken next (click selector, navigate to URL, wait, etc.)
+3. Your confidence level in this assessment
+4. Any potential issues or challenges you foresee
+
+Be specific and actionable in your recommendations.`;
         const analysis = await env.AI.run('@cf/openai/gpt-oss-120b', { 
-          input: `System: You are an expert web automation analyst. Provide detailed analysis and actionable recommendations.
+          input: `System: You are an expert web automation analyst with deep understanding of web scraping, user interfaces, and automation workflows. You excel at analyzing complex web pages and providing specific, actionable recommendations for automation tasks.
 
 User: ${analysisPrompt}`
         } as any);
         const analysisResult = typeof analysis === 'string' ? analysis : ((analysis as any).response || JSON.stringify(analysis));
-        log('DEBUG', { message: 'Requested deeper analysis' });
+        log('DEBUG', { message: 'Requested deeper analysis with GPT-OSS-120B' });
         return { success: true, result: analysisResult };
         
       case 'get_observations_for_pattern':
@@ -368,6 +374,163 @@ User: ${analysisPrompt}`
   } catch (error) {
     log('ERROR', { message: 'Tool execution failed', tool: name, error: String(error) });
     return { success: false, error: String(error) };
+  }
+}
+
+// Helper function to determine if deeper analysis is needed
+function shouldRequestDeeperAnalysis(
+  parsed: any, 
+  result: any, 
+  goal: string, 
+  currentStep: number, 
+  maxSteps: number
+): boolean {
+  // Trigger conditions for deeper analysis
+  
+  // 1. Primary model failed to parse response
+  if (!result.success) {
+    return true;
+  }
+  
+  // 2. Low confidence from primary model
+  if (parsed.confidence !== undefined && parsed.confidence < 0.6) {
+    return true;
+  }
+  
+  // 3. Complex goal keywords that might need deeper analysis
+  const complexKeywords = ['analyze', 'compare', 'summarize', 'complex', 'detailed', 'comprehensive', 'evaluate'];
+  const goalLower = goal.toLowerCase();
+  if (complexKeywords.some(keyword => goalLower.includes(keyword))) {
+    return true;
+  }
+  
+  // 4. Agent seems stuck (repeated actions or no progress)
+  if (currentStep >= 2 && parsed.nextAction?.type === 'none') {
+    return true;
+  }
+  
+  // 5. Uncertain reasoning from primary model
+  if (parsed.reason && (
+    parsed.reason.toLowerCase().includes('uncertain') ||
+    parsed.reason.toLowerCase().includes('unclear') ||
+    parsed.reason.toLowerCase().includes('difficult') ||
+    parsed.reason.toLowerCase().includes('complex')
+  )) {
+    return true;
+  }
+  
+  // 6. Last resort: if we're near the end and haven't achieved the goal
+  if (currentStep >= maxSteps - 2 && !parsed.achieved) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Helper function to parse GPT-OSS response and enhance the decision
+function parseGPTOSSResponse(gptResponse: string, originalParsed: any): any | null {
+  try {
+    const response = gptResponse.toLowerCase();
+    
+    // Create enhanced parsed object based on GPT-OSS analysis
+    const enhanced = { ...originalParsed };
+    
+    // Check if GPT-OSS suggests the goal is achieved
+    if (response.includes('goal achieved') || 
+        response.includes('task completed') || 
+        response.includes('successfully extracted') ||
+        response.includes('found the required') ||
+        response.includes('objective met') ||
+        response.includes('data found') ||
+        response.includes('extraction complete')) {
+      enhanced.achieved = true;
+      enhanced.confidence = Math.max(enhanced.confidence || 0, 0.8);
+      enhanced.reason = `GPT-OSS Analysis: ${gptResponse.substring(0, 200)}...`;
+      return enhanced;
+    }
+    
+    // Extract next action recommendations from GPT-OSS response
+    if (response.includes('click') && (response.includes('selector') || response.includes('button') || response.includes('link'))) {
+      // Try to extract selector from the response
+      const selectorMatch = gptResponse.match(/selector[:\s]+([^\s,]+)/i) || 
+                           gptResponse.match(/click[:\s]+([^\s,]+)/i) ||
+                           gptResponse.match(/button[:\s]+([^\s,]+)/i);
+      if (selectorMatch && selectorMatch[1] !== '/' && selectorMatch[1].length > 1) {
+        enhanced.nextAction = {
+          type: 'click',
+          selector: selectorMatch[1]
+        };
+        enhanced.reason = `GPT-OSS recommends clicking: ${gptResponse.substring(0, 200)}...`;
+        return enhanced;
+      }
+    }
+    
+    if (response.includes('navigate') || response.includes('go to') || response.includes('visit')) {
+      // Try to extract URL from the response
+      const urlMatch = gptResponse.match(/(https?:\/\/[^\s,]+)/i);
+      if (urlMatch) {
+        enhanced.nextAction = {
+          type: 'navigate',
+          url: urlMatch[1]
+        };
+        enhanced.reason = `GPT-OSS recommends navigation: ${gptResponse.substring(0, 200)}...`;
+        return enhanced;
+      }
+    }
+    
+    if (response.includes('wait') || response.includes('loading') || response.includes('timeout')) {
+      // Try to extract specific selector to wait for
+      const waitSelectorMatch = gptResponse.match(/wait for[:\s]+([^\s,]+)/i);
+      const selector = waitSelectorMatch ? waitSelectorMatch[1] : 'body';
+      
+      enhanced.nextAction = {
+        type: 'waitForSelector',
+        selector: selector
+      };
+      enhanced.reason = `GPT-OSS recommends waiting: ${gptResponse.substring(0, 200)}...`;
+      return enhanced;
+    }
+    
+    if (response.includes('type') || response.includes('enter') || response.includes('input')) {
+      // Try to extract text to type and selector
+      const textMatch = gptResponse.match(/type[:\s]+["']([^"']+)["']/i) ||
+                       gptResponse.match(/enter[:\s]+["']([^"']+)["']/i);
+      const selectorMatch = gptResponse.match(/into[:\s]+([^\s,]+)/i) ||
+                           gptResponse.match(/field[:\s]+([^\s,]+)/i);
+      
+      if (textMatch && selectorMatch) {
+        enhanced.nextAction = {
+          type: 'type',
+          selector: selectorMatch[1],
+          text: textMatch[1]
+        };
+        enhanced.reason = `GPT-OSS recommends typing: ${gptResponse.substring(0, 200)}...`;
+        return enhanced;
+      }
+    }
+    
+    // Extract confidence level if mentioned
+    const confidenceMatch = gptResponse.match(/confidence[:\s]+(\d+(?:\.\d+)?)/i);
+    if (confidenceMatch) {
+      const confidence = parseFloat(confidenceMatch[1]);
+      if (confidence <= 1) {
+        enhanced.confidence = confidence;
+      } else if (confidence <= 100) {
+        enhanced.confidence = confidence / 100;
+      }
+    }
+    
+    // If GPT-OSS provides general guidance but no specific action
+    if (response.length > 50) {
+      enhanced.reason = `GPT-OSS Analysis: ${gptResponse.substring(0, 200)}...`;
+      enhanced.confidence = Math.max(enhanced.confidence || 0, 0.7);
+      return enhanced;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing GPT-OSS response:', error);
+    return null;
   }
 }
 
@@ -435,13 +598,63 @@ Return a structured response with your analysis and recommendations.`;
         parsed = result.structuredResult;
         log('DEBUG', { message: 'Llama 4 response parsed successfully', modelUsed: result.modelUsed });
       } else {
-        log('WARN', { message: 'Failed to parse Llama 4 response', error: result.error || 'Unknown error' });
+        log('WARN', { message: 'Failed to parse Llama 4 response', error: result.error || 'Unknown error', modelUsed: result.modelUsed });
         // Fallback heuristic
         parsed = { 
           achieved: false, 
           nextAction: { type: 'none' },
           reason: 'Failed to parse response, stopping execution'
         };
+      }
+
+      // Strategic GPT-OSS-120B Integration: Check if deeper analysis is needed
+      let analysisResult: any = null;
+      const needsDeeperAnalysis = shouldRequestDeeperAnalysis(parsed, result, input.goal, i, maxSteps);
+      
+      if (needsDeeperAnalysis && i < maxSteps - 1) {
+        log('INFO', { message: 'Primary model uncertainty/failure. Requesting deeper analysis with GPT-OSS-120B...' });
+        
+        try {
+          // Prepare inputs for the deeper analysis tool
+          const deeperAnalysisArgs = {
+            objective: `Given the goal "${input.goal}" and the current page state, determine the best next action or if the goal is achieved. Provide specific, actionable guidance.`,
+            visual_description: `Current URL: ${currentUrl}. Page analysis suggests: ${JSON.stringify(parsed.pageAnalysis || 'N/A')}. Current step: ${i + 1}/${maxSteps}`,
+            extracted_content: html.slice(0, 5000) // Provide a snippet of HTML
+          };
+          
+          const deepAnalysisResponse = await executeToolCall(
+            { name: 'request_deeper_analysis', arguments: deeperAnalysisArgs },
+            page, env, log, urlPattern, input
+          );
+          
+          if (deepAnalysisResponse.success) {
+            log('DEBUG', { message: 'Received response from GPT-OSS-120B deeper analysis', details: deepAnalysisResponse.result, modelUsed: '@cf/openai/gpt-oss-120b' });
+            analysisResult = deepAnalysisResponse.result;
+            
+            // Log this analysis step
+            steps.push({
+              action: 'deeper_analysis',
+              ok: true,
+              note: `GPT-OSS Analysis: ${String(analysisResult).substring(0, 200)}...`
+            });
+
+            // Parse GPT-OSS response to guide the next action
+            const enhancedParsed = parseGPTOSSResponse(analysisResult, parsed);
+            if (enhancedParsed) {
+              parsed = enhancedParsed;
+              log('INFO', { message: 'GPT-OSS analysis successfully enhanced decision making' });
+            } else {
+              log('WARN', { message: 'Failed to parse GPT-OSS response, using original decision' });
+            }
+
+          } else {
+            log('WARN', { message: 'Deeper analysis failed', error: deepAnalysisResponse.error });
+            steps.push({ action: 'deeper_analysis', ok: false, note: `Failed: ${deepAnalysisResponse.error}` });
+          }
+        } catch (error) {
+          log('ERROR', { message: 'Error during deeper analysis', error: String(error) });
+          steps.push({ action: 'deeper_analysis', ok: false, note: `Error: ${String(error)}` });
+        }
       }
 
       // Log the decision
