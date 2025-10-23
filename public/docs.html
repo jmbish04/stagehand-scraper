@@ -1,16 +1,47 @@
-<!doctype html>
-<meta charset="utf-8">
-<title>API Docs</title>
-<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
-<div id="swagger"></div>
-<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-<script>
-  window.onload = () => {
-    SwaggerUIBundle({
-      url: '/openapi.json',
-      dom_id: '#swagger',
-      deepLinking: true,
-      presets: [SwaggerUIBundle.presets.apis],
-    });
-  };
-</script>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stagehand Scraper Documentation</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div id="app-nav"></div>
+    <main>
+      <section>
+        <h1>Architecture & Best Practices</h1>
+        <p>Understand the autopilot worker, data pipeline, and how to craft reliable scrape requests.</p>
+      </section>
+      <section class="card-grid">
+        <article class="card">
+          <h2>Worker Architecture</h2>
+          <p>The Cloudflare Worker orchestrates Chromium via the Browser Rendering API, Cloudflare AI for reasoning and extraction, and D1 for request tracking, observations, and artifacts. Each request runs in an isolated Playwright context with exhaustive asset capture per step.</p>
+        </article>
+        <article class="card">
+          <h2>Agent Loop</h2>
+          <p>The `/scrape/ondemand` endpoint kicks off a navigation step, records screenshots, HTML, text, CSS, console logs, and then asks a structured-output model for schema-compliant data. When the model reports uncertainty, a secondary deep reasoning model is invoked automatically.</p>
+        </article>
+        <article class="card">
+          <h2>Schema Tips</h2>
+          <p>Use the API or UI schema generator to bootstrap a JSON schema, then refine field descriptions manually. Keep fields optional when the target site varies and leverage arrays for repeated structures (e.g., listings, cards, reviews).</p>
+        </article>
+      </section>
+      <section class="card-grid">
+        <article class="card">
+          <h2>Selectors & Rules</h2>
+          <p>Use the Agent Discovery tool on each target site to capture reliable selectors. Combine discovery output with custom rules to guide the agent toward the correct forms, buttons, and content containers.</p>
+        </article>
+        <article class="card">
+          <h2>Observability</h2>
+          <p>Monitor execution via WebSocket streams exposed under `/api/requests/{id}/stream`. Every step writes to `request_steps`, `request_step_assets`, and `scraper_logs` for rich debugging.</p>
+        </article>
+        <article class="card">
+          <h2>Data Retrieval</h2>
+          <p>Fetch normalized outputs from `/api/requests/{id}/data`. Pair this endpoint with the JSON schema to power downstream automations or deliverables.</p>
+        </article>
+      </section>
+    </main>
+    <script type="module" src="js/nav.js"></script>
+  </body>
+</html>
