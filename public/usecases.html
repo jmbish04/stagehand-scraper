@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Use Case Library</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div id="app-nav"></div>
+    <main>
+      <section>
+        <h1>Use Case Library</h1>
+        <p>Curated collection of scraping blueprints organized by industry and workflow.</p>
+      </section>
+      <section>
+        <div class="bento-grid" id="category-grid"></div>
+      </section>
+      <section>
+        <h2>Create Category</h2>
+        <form id="create-category" style="display:grid;gap:12px;max-width:420px;">
+          <input type="text" id="category-name" placeholder="Category name" required />
+          <textarea id="category-description" placeholder="Optional description"></textarea>
+          <button class="button" type="submit">Create</button>
+        </form>
+      </section>
+    </main>
+    <script type="module" src="js/nav.js"></script>
+    <script type="module" src="js/usecases.js"></script>
+  </body>
+</html>

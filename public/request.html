@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Request Monitor</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div id="app-nav"></div>
+    <main>
+      <section>
+        <h1 id="request-title">Request</h1>
+        <p id="request-subtitle">Loading request metadata…</p>
+      </section>
+      <section class="card-grid" id="request-summary"></section>
+      <section class="card-grid" id="data-panel"></section>
+      <section>
+        <h2>Agent Timeline</h2>
+        <div class="timeline" id="timeline"></div>
+      </section>
+      <section>
+        <h2>Step Logs</h2>
+        <div class="log-viewer" id="request-logs"></div>
+      </section>
+    </main>
+    <div id="modal-root"></div>
+    <script type="module" src="js/nav.js"></script>
+    <script type="module" src="js/request.js"></script>
+  </body>
+</html>

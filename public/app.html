@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>App Configuration</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div id="app-nav"></div>
+    <main>
+      <section>
+        <h1 id="app-heading">Apps</h1>
+        <p id="app-description">Select a category to explore curated agent blueprints.</p>
+      </section>
+      <section id="app-list" class="card-grid"></section>
+      <section id="app-detail" style="display:none;gap:18px;" class="card-grid">
+        <div class="card" style="grid-column: span 2;">
+          <h2>Prompt & Schema</h2>
+          <textarea id="app-prompt" rows="6"></textarea>
+          <textarea id="app-schema" rows="10" placeholder="JSON schema"></textarea>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="button" id="save-app">Save Configuration</button>
+            <button class="button" id="test-schema">Generate Schema from Prompt</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Run This App</h2>
+          <input type="text" id="run-url" placeholder="Override URL (optional)" />
+          <textarea id="run-goal" rows="3" placeholder="Override goal (optional)"></textarea>
+          <button class="button" id="run-app">Launch Request</button>
+          <div id="run-result" class="muted"></div>
+        </div>
+        <div class="card" style="grid-column: span 2;">
+          <h2>Target Sites</h2>
+          <table style="width:100%;">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>URL</th>
+                <th>Discovery</th>
+                <th>Last Suggestions</th>
+              </tr>
+            </thead>
+            <tbody id="site-table"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="js/nav.js"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
