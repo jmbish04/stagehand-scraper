@@ -4,7 +4,9 @@
     "compatibility_flags": ["nodejs_compat"],
     "compatibility_date": "2025-09-06",
     "observability": {
-      "enabled": true
+      "enabled": true,
+      "traces": { "enabled": false },
+      "logs": { "enabled": true, "invocation_logs": false }
     },
     "browser": {
       "binding": "BROWSER"
